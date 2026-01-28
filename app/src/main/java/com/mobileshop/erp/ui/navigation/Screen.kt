@@ -3,8 +3,10 @@ package com.mobileshop.erp.ui.navigation
 sealed class Screen(val route: String) {
     data object Setup : Screen("setup")
     data object PinAuth : Screen("pin_auth")
+    data object Login : Screen("login")
     data object Main : Screen("main")
     data object Settings : Screen("settings")
+    data object TransactionHistory : Screen("transaction_history")
     data object CustomerDetail : Screen("customer_detail/{customerId}") {
         fun createRoute(customerId: Long) = "customer_detail/$customerId"
     }

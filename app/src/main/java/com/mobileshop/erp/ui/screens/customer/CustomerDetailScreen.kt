@@ -1,5 +1,7 @@
 package com.mobileshop.erp.ui.screens.customer
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,10 +13,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mobileshop.erp.data.entity.KhataTransaction
 import com.mobileshop.erp.data.entity.TransactionType
 import com.mobileshop.erp.ui.theme.ProfitGreen
 import com.mobileshop.erp.ui.theme.UdhaarRed
@@ -30,8 +34,12 @@ fun CustomerDetailScreen(
     viewModel: CustomerDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    
     var showAddUdhaarDialog by remember { mutableStateOf(false) }
     var showPaymentDialog by remember { mutableStateOf(false) }
+    var showFromDatePicker by remember { mutableStateOf(false) }
+    var showToDatePicker by remember { mutableStateOf(false) }
     
     val currencyFormatter = remember { 
         NumberFormat.getCurrencyInstance(Locale("en", "PK")).apply {
@@ -40,6 +48,25 @@ fun CustomerDetailScreen(
     }
     
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
+    val shortDateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+
+    // Filter transactions based on date range
+    val filteredTransactions = remember(uiState.transactions, uiState.fromDate, uiState.toDate) {
+        uiState.transactions.filter { transaction ->
+            val matchesFrom = uiState.fromDate?.let { transaction.createdAt >= it } ?: true
+            val matchesTo = uiState.toDate?.let { transaction.createdAt <= it } ?: true
+            matchesFrom && matchesTo
+        }
+    }
+
+    // Calculate filtered totals
+    val filteredTotalDebit = filteredTransactions
+        .filter { it.type == TransactionType.UDHAAR_GIVEN }
+        .sumOf { it.amount }
+    val filteredTotalCredit = filteredTransactions
+        .filter { it.type == TransactionType.PAYMENT_RECEIVED }
+        .sumOf { it.amount }
+    val filteredBalance = filteredTotalDebit - filteredTotalCredit
 
     Scaffold(
         topBar = {
@@ -62,28 +89,63 @@ fun CustomerDetailScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    // Clear filters button
+                    if (uiState.fromDate != null || uiState.toDate != null) {
+                        IconButton(onClick = { viewModel.clearDateFilters() }) {
+                            Icon(Icons.Default.FilterAltOff, contentDescription = "Clear Filters")
+                        }
+                    }
                 }
             )
         },
         floatingActionButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ExtendedFloatingActionButton(
-                    onClick = { showPaymentDialog = true },
-                    containerColor = ProfitGreen,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Share Report FAB
+                SmallFloatingActionButton(
+                    onClick = {
+                        shareKhataReport(
+                            context = context,
+                            customerName = uiState.customer?.customerName ?: "Customer",
+                            transactions = filteredTransactions,
+                            totalDebit = filteredTotalDebit,
+                            totalCredit = filteredTotalCredit,
+                            balance = filteredBalance,
+                            currencyFormatter = currencyFormatter,
+                            dateFormatter = dateFormatter,
+                            fromDate = uiState.fromDate?.let { shortDateFormatter.format(Date(it)) },
+                            toDate = uiState.toDate?.let { shortDateFormatter.format(Date(it)) }
+                        )
+                    },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Payment")
+                    Icon(Icons.Default.Share, contentDescription = "Share Report")
                 }
-                ExtendedFloatingActionButton(
-                    onClick = { showAddUdhaarDialog = true },
-                    containerColor = UdhaarRed,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Icon(Icons.Default.Remove, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Udhaar")
+                
+                // Main Action Buttons
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ExtendedFloatingActionButton(
+                        onClick = { showPaymentDialog = true },
+                        containerColor = ProfitGreen,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Payment")
+                    }
+                    ExtendedFloatingActionButton(
+                        onClick = { showAddUdhaarDialog = true },
+                        containerColor = UdhaarRed,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Icon(Icons.Default.Remove, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Udhaar")
+                    }
                 }
             }
         }
@@ -104,6 +166,87 @@ fun CustomerDetailScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    // Date Filter Buttons
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            ) {
+                                Text(
+                                    text = "Filter by Date",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { showFromDatePicker = true },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Icon(Icons.Default.DateRange, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = uiState.fromDate?.let { shortDateFormatter.format(Date(it)) } 
+                                                ?: "Start Date"
+                                        )
+                                    }
+                                    OutlinedButton(
+                                        onClick = { showToDatePicker = true },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Icon(Icons.Default.DateRange, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = uiState.toDate?.let { shortDateFormatter.format(Date(it)) } 
+                                                ?: "End Date"
+                                        )
+                                    }
+                                }
+                                
+                                // Filter active indicator
+                                if (uiState.fromDate != null || uiState.toDate != null) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = MaterialTheme.colorScheme.primaryContainer
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Showing ${filteredTransactions.size} transactions",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                            TextButton(
+                                                onClick = { viewModel.clearDateFilters() }
+                                            ) {
+                                                Text("Clear")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Balance Card
                     item {
                         val balance = customer.totalUdhaar - customer.totalPaid
@@ -142,22 +285,23 @@ fun CustomerDetailScreen(
                         }
                     }
 
-                    // Summary Row
+                    // Summary Row (Filtered if dates are set)
                     item {
+                        val showFiltered = uiState.fromDate != null || uiState.toDate != null
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             SummaryCard(
                                 modifier = Modifier.weight(1f),
-                                title = "Total Udhaar",
-                                value = currencyFormatter.format(customer.totalUdhaar),
+                                title = if (showFiltered) "Filtered Udhaar" else "Total Udhaar",
+                                value = currencyFormatter.format(if (showFiltered) filteredTotalDebit else customer.totalUdhaar),
                                 color = UdhaarRed
                             )
                             SummaryCard(
                                 modifier = Modifier.weight(1f),
-                                title = "Total Paid",
-                                value = currencyFormatter.format(customer.totalPaid),
+                                title = if (showFiltered) "Filtered Paid" else "Total Paid",
+                                value = currencyFormatter.format(if (showFiltered) filteredTotalCredit else customer.totalPaid),
                                 color = ProfitGreen
                             )
                         }
@@ -172,7 +316,7 @@ fun CustomerDetailScreen(
                         )
                     }
 
-                    if (uiState.transactions.isEmpty()) {
+                    if (filteredTransactions.isEmpty()) {
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -194,7 +338,10 @@ fun CustomerDetailScreen(
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        text = "No transactions yet",
+                                        text = if (uiState.fromDate != null || uiState.toDate != null)
+                                            "No transactions in selected date range"
+                                        else 
+                                            "No transactions yet",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -202,7 +349,7 @@ fun CustomerDetailScreen(
                             }
                         }
                     } else {
-                        items(uiState.transactions) { transaction ->
+                        items(filteredTransactions) { transaction ->
                             TransactionCard(
                                 transaction = transaction,
                                 currencyFormatter = currencyFormatter,
@@ -213,10 +360,68 @@ fun CustomerDetailScreen(
 
                     // Bottom spacing for FAB
                     item {
-                        Spacer(modifier = Modifier.height(100.dp))
+                        Spacer(modifier = Modifier.height(140.dp))
                     }
                 }
             }
+        }
+    }
+
+    // From Date Picker
+    if (showFromDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = uiState.fromDate ?: System.currentTimeMillis()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showFromDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let {
+                            viewModel.setFromDate(it)
+                        }
+                        showFromDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFromDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    // To Date Picker
+    if (showToDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = uiState.toDate ?: System.currentTimeMillis()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showToDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let {
+                            viewModel.setToDate(it + (24 * 60 * 60 * 1000) - 1)
+                        }
+                        showToDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showToDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 
@@ -284,7 +489,7 @@ private fun SummaryCard(
 
 @Composable
 private fun TransactionCard(
-    transaction: com.mobileshop.erp.data.entity.KhataTransaction,
+    transaction: KhataTransaction,
     currencyFormatter: NumberFormat,
     dateFormatter: SimpleDateFormat
 ) {
@@ -401,4 +606,61 @@ private fun TransactionDialog(
             }
         }
     )
+}
+
+private fun shareKhataReport(
+    context: Context,
+    customerName: String,
+    transactions: List<KhataTransaction>,
+    totalDebit: Double,
+    totalCredit: Double,
+    balance: Double,
+    currencyFormatter: NumberFormat,
+    dateFormatter: SimpleDateFormat,
+    fromDate: String?,
+    toDate: String?
+) {
+    val reportText = buildString {
+        appendLine("═══════════════════════════")
+        appendLine("      KHATA LEDGER REPORT")
+        appendLine("═══════════════════════════")
+        appendLine()
+        appendLine("Customer: $customerName")
+        if (fromDate != null || toDate != null) {
+            appendLine("Period: ${fromDate ?: "Beginning"} to ${toDate ?: "Now"}")
+        }
+        appendLine()
+        appendLine("───────────────────────────")
+        appendLine("SUMMARY")
+        appendLine("───────────────────────────")
+        appendLine("Total Udhaar: ${currencyFormatter.format(totalDebit)}")
+        appendLine("Total Paid: ${currencyFormatter.format(totalCredit)}")
+        appendLine("Balance: ${currencyFormatter.format(balance)}")
+        appendLine("Status: ${if (balance > 0) "RECEIVABLE" else "CLEARED"}")
+        appendLine()
+        appendLine("───────────────────────────")
+        appendLine("TRANSACTIONS (${transactions.size})")
+        appendLine("───────────────────────────")
+        
+        transactions.forEach { transaction ->
+            val isPayment = transaction.type == TransactionType.PAYMENT_RECEIVED
+            val sign = if (isPayment) "+" else "-"
+            val type = if (isPayment) "Payment" else "Udhaar"
+            appendLine("$type: $sign${currencyFormatter.format(transaction.amount)}")
+            if (transaction.description.isNotEmpty()) {
+                appendLine("  Note: ${transaction.description}")
+            }
+            appendLine("  Date: ${dateFormatter.format(Date(transaction.createdAt))}")
+            appendLine()
+        }
+        
+        appendLine("═══════════════════════════")
+        appendLine("Generated by Mobile Shop ERP")
+    }
+
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, reportText)
+    }
+    context.startActivity(Intent.createChooser(intent, "Share Khata Report"))
 }

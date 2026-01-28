@@ -15,7 +15,9 @@ data class CustomerDetailUiState(
     val customer: CustomerKhata? = null,
     val transactions: List<KhataTransaction> = emptyList(),
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val fromDate: Long? = null,
+    val toDate: Long? = null
 )
 
 @HiltViewModel
@@ -69,5 +71,17 @@ class CustomerDetailViewModel @Inject constructor(
                 _uiState.update { it.copy(error = e.message) }
             }
         }
+    }
+
+    fun setFromDate(date: Long) {
+        _uiState.update { it.copy(fromDate = date) }
+    }
+
+    fun setToDate(date: Long) {
+        _uiState.update { it.copy(toDate = date) }
+    }
+
+    fun clearDateFilters() {
+        _uiState.update { it.copy(fromDate = null, toDate = null) }
     }
 }

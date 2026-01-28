@@ -28,6 +28,7 @@ data class MainUiState(
     val customers: List<CustomerKhata> = emptyList(),
     val handsets: List<Product> = emptyList(),
     val accessories: List<Product> = emptyList(),
+    val soldPhones: List<com.mobileshop.erp.data.entity.Sale> = emptyList(),
     val searchQuery: String = "",
     val isLoading: Boolean = true,
     val currentPage: Int = 0
@@ -101,6 +102,12 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             productRepository.getAccessories().collect { accessories ->
                 _uiState.update { it.copy(accessories = accessories) }
+            }
+        }
+
+        viewModelScope.launch {
+            saleRepository.getAllSales().collect { sales ->
+                _uiState.update { it.copy(soldPhones = sales) }
             }
         }
     }

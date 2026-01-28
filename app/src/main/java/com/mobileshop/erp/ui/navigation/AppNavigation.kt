@@ -10,11 +10,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.mobileshop.erp.ui.screens.main.MainScreen
 import com.mobileshop.erp.ui.screens.auth.PinAuthScreen
+import com.mobileshop.erp.ui.screens.auth.LoginScreen
 import com.mobileshop.erp.ui.screens.setup.SetupScreen
 import com.mobileshop.erp.ui.screens.settings.SettingsScreen
 import com.mobileshop.erp.ui.screens.product.AddProductScreen
 import com.mobileshop.erp.ui.screens.customer.CustomerDetailScreen
 import com.mobileshop.erp.ui.screens.sale.SellProductScreen
+import com.mobileshop.erp.ui.screens.history.TransactionHistoryScreen
 
 @Composable
 fun AppNavigation(
@@ -69,6 +71,21 @@ fun AppNavigation(
             )
         }
 
+        composable(Screen.Login.route) {
+            LoginScreen(
+                onAuthSuccess = {
+                    navController.navigate(Screen.Main.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                },
+                onFallbackToPin = {
+                    navController.navigate(Screen.PinAuth.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable(Screen.Main.route) {
             MainScreen(
                 onNavigateToSettings = {
@@ -82,12 +99,21 @@ fun AppNavigation(
                 },
                 onNavigateToSellProduct = { productId ->
                     navController.navigate(Screen.SellProduct.createRoute(productId))
+                },
+                onNavigateToTransactionHistory = {
+                    navController.navigate(Screen.TransactionHistory.route)
                 }
             )
         }
 
         composable(Screen.Settings.route) {
             SettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.TransactionHistory.route) {
+            TransactionHistoryScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

@@ -2,26 +2,32 @@ package com.mobileshop.erp.ui.screens.main
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mobileshop.erp.ui.screens.main.pages.DashboardPage
 import com.mobileshop.erp.ui.screens.main.pages.InventoryPage
 import com.mobileshop.erp.ui.screens.main.pages.KhataPage
+import com.mobileshop.erp.ui.screens.main.pages.OldPhonesPage
 import kotlinx.coroutines.launch
+
+data class TabItem(
+    val title: String,
+    val icon: ImageVector
+)
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -30,12 +36,20 @@ fun MainScreen(
     onNavigateToCustomerDetail: (Long) -> Unit,
     onNavigateToAddProduct: (String) -> Unit,
     onNavigateToSellProduct: (Long) -> Unit,
+    onNavigateToTransactionHistory: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val pagerState = rememberPagerState(pageCount = { 2 })
+    val pagerState = rememberPagerState(pageCount = { 4 })
     val coroutineScope = rememberCoroutineScope()
     var showAddCustomerDialog by remember { mutableStateOf(false) }
+
+    val tabs = listOf(
+        TabItem("Dashboard", Icons.Default.Dashboard),
+        TabItem("Khata", Icons.Default.AccountBalance),
+        TabItem("Inventory", Icons.Default.Inventory2),
+        TabItem("Old Phones", Icons.Default.PhoneAndroid)
+    )
 
     LaunchedEffect(pagerState.currentPage) {
         viewModel.setCurrentPage(pagerState.currentPage)
@@ -52,7 +66,7 @@ fun MainScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = if (pagerState.currentPage == 0) "Khata & Dashboard" else "Inventory",
+                            text = tabs[pagerState.currentPage].title,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -70,26 +84,26 @@ fun MainScreen(
         },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = true,
+                visible = pagerState.currentPage == 1 || pagerState.currentPage == 2,
                 enter = scaleIn() + fadeIn(),
                 exit = scaleOut() + fadeOut()
             ) {
-                if (pagerState.currentPage == 0) {
-                    ExtendedFloatingActionButton(
-                        onClick = { showAddCustomerDialog = true },
-                        icon = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
-                        text = { Text("Add Customer") },
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                } else {
-                    FloatingActionButton(
-                        onClick = { /* Show add options */ },
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    ) {
+                when (pagerState.currentPage) {
+                    1 -> { // Khata - Add Customer
+                        ExtendedFloatingActionButton(
+                            onClick = { showAddCustomerDialog = true },
+                            icon = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
+                            text = { Text("Add Customer") },
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    2 -> { // Inventory - Add Stock
                         var expanded by remember { mutableStateOf(false) }
-                        
                         Box {
-                            IconButton(onClick = { expanded = true }) {
+                            FloatingActionButton(
+                                onClick = { expanded = true },
+                                containerColor = MaterialTheme.colorScheme.secondary
+                            ) {
                                 Icon(Icons.Default.Add, contentDescription = "Add Stock")
                             }
                             
@@ -129,63 +143,71 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Page Indicator
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TabButton(
-                    text = "Khata",
-                    icon = Icons.Default.AccountBalance,
-                    isSelected = pagerState.currentPage == 0,
-                    onClick = {
-                        coroutineScope.launch { pagerState.animateScrollToPage(0) }
+            // Scrollable Tab Row with Underline Indicator
+            ScrollableTabRow(
+                selectedTabIndex = pagerState.currentPage,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary,
+                edgePadding = 16.dp,
+                indicator = { tabPositions ->
+                    if (pagerState.currentPage < tabPositions.size) {
+                        SecondaryIndicator(
+                            modifier = Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
+                            height = 3.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                TabButton(
-                    text = "Inventory",
-                    icon = Icons.Default.Inventory2,
-                    isSelected = pagerState.currentPage == 1,
-                    onClick = {
-                        coroutineScope.launch { pagerState.animateScrollToPage(1) }
-                    }
-                )
-            }
-
-            // Page Dots
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.Center
+                },
+                divider = {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        thickness = 1.dp
+                    )
+                }
             ) {
-                repeat(2) { index ->
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                            .size(if (pagerState.currentPage == index) 10.dp else 6.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (pagerState.currentPage == index)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.outlineVariant
-                            )
+                tabs.forEachIndexed { index, tab ->
+                    Tab(
+                        selected = pagerState.currentPage == index,
+                        onClick = {
+                            coroutineScope.launch { pagerState.animateScrollToPage(index) }
+                        },
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = tab.icon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = tab.title,
+                                    fontWeight = if (pagerState.currentPage == index) 
+                                        FontWeight.SemiBold 
+                                    else 
+                                        FontWeight.Normal
+                                )
+                            }
+                        },
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            // Pager Content
+            // Horizontal Pager Content - Swipeable
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 when (page) {
-                    0 -> KhataPage(
+                    0 -> DashboardPage(
+                        stats = uiState.stats,
+                        shopName = uiState.shopName,
+                        onNavigateToTransactionHistory = onNavigateToTransactionHistory
+                    )
+                    1 -> KhataPage(
                         stats = uiState.stats,
                         customers = uiState.customers,
                         searchQuery = uiState.searchQuery,
@@ -193,13 +215,18 @@ fun MainScreen(
                         onCustomerClick = onNavigateToCustomerDetail,
                         onDeleteCustomer = viewModel::deleteCustomer
                     )
-                    1 -> InventoryPage(
+                    2 -> InventoryPage(
                         handsets = uiState.handsets,
                         accessories = uiState.accessories,
                         onProductClick = onNavigateToSellProduct,
                         onDeleteProduct = viewModel::deleteProduct,
                         onAddHandset = { onNavigateToAddProduct("HANDSET") },
                         onAddAccessory = { onNavigateToAddProduct("ACCESSORY") }
+                    )
+                    3 -> OldPhonesPage(
+                        soldPhones = uiState.soldPhones,
+                        shopName = uiState.shopName,
+                        onNavigateToTransactionHistory = onNavigateToTransactionHistory
                     )
                 }
             }
@@ -214,43 +241,6 @@ fun MainScreen(
                 viewModel.addCustomer(name, phone)
                 showAddCustomerDialog = false
             }
-        )
-    }
-}
-
-@Composable
-private fun TabButton(
-    text: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    FilledTonalButton(
-        onClick = onClick,
-        colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = if (isSelected) 
-                MaterialTheme.colorScheme.primaryContainer 
-            else 
-                MaterialTheme.colorScheme.surfaceVariant
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp),
-            tint = if (isSelected) 
-                MaterialTheme.colorScheme.primary 
-            else 
-                MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = text,
-            color = if (isSelected) 
-                MaterialTheme.colorScheme.primary 
-            else 
-                MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
