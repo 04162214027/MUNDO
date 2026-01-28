@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="seed">#1E88E5</color>
+    <color name="primary">#1E88E5</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="secondary">#26A69A</color>
+    <color name="tertiary">#FF7043</color>
+    <color name="profit_green">#4CAF50</color>
+    <color name="udhaar_red">#F44336</color>
+    <color name="cash_blue">#2196F3</color>
+</resources>
