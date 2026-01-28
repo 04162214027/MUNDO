@@ -1,10 +1,8 @@
-name: Android CI - Build APK
+name: Build MundoLoader Debug
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -12,37 +10,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
     - name: Set up JDK 17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v3
       with:
         java-version: '17'
         distribution: 'temurin'
         cache: gradle
 
-    - name: Grant execute permission for gradlew
+    # Ye wali line zaroori hai taake gradlew ko permission mile
+    - name: Grant Permission to Gradlew
       run: chmod +x gradlew
 
+    # Ghaur karein: Yahan hum 'assembleDebug' use kar rahe hain (Release nahi)
     - name: Build Debug APK
       run: ./gradlew assembleDebug --stacktrace
 
-    - name: Upload Debug APK
-      uses: actions/upload-artifact@v4
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
       with:
-        name: debug-apk
+        name: MundoLoader-Debug-APK
         path: app/build/outputs/apk/debug/app-debug.apk
-        retention-days: 30
-
-    - name: Build Release APK
-      run: ./gradlew assembleRelease --stacktrace
-      continue-on-error: true
-
-    - name: Upload Release APK
-      if: success()
-      uses: actions/upload-artifact@v4
-      with:
-        name: release-apk
-        path: app/build/outputs/apk/release/app-release-unsigned.apk
-        retention-days: 30
