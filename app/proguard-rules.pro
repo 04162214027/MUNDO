@@ -18,3 +18,19 @@
 
 # Compose
 -dontwarn androidx.compose.**
+
+# Google Tink / Crypto - Missing errorprone annotations
+-dontwarn com.google.errorprone.annotations.CanIgnoreReturnValue
+-dontwarn com.google.errorprone.annotations.CheckReturnValue
+-dontwarn com.google.errorprone.annotations.Immutable
+-dontwarn com.google.errorprone.annotations.RestrictedApi
+-dontwarn com.google.errorprone.annotations.concurrent.LazyInit
+-dontwarn com.google.errorprone.annotations.InlineMe
+-dontwarn com.google.errorprone.annotations.DoNotMock
+-dontwarn javax.annotation.Nullable
+-dontwarn javax.annotation.concurrent.GuardedBy
+-dontwarn javax.annotation.concurrent.ThreadSafe
+
+# Keep Tink classes
+-keep class com.google.crypto.tink.** { *; }
+-dontwarn com.google.crypto.tink.**
