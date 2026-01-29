@@ -7,6 +7,7 @@ sealed class Screen(val route: String) {
     data object Main : Screen("main")
     data object Settings : Screen("settings")
     data object TransactionHistory : Screen("transaction_history")
+    data object PurchaseOldPhone : Screen("purchase_old_phone")
     data object CustomerDetail : Screen("customer_detail/{customerId}") {
         fun createRoute(customerId: Long) = "customer_detail/$customerId"
     }

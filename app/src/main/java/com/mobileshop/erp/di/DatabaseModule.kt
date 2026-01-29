@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.mobileshop.erp.data.MobileShopDatabase
 import com.mobileshop.erp.data.dao.CustomerKhataDao
+import com.mobileshop.erp.data.dao.OldPhonePurchaseDao
 import com.mobileshop.erp.data.dao.ProductDao
 import com.mobileshop.erp.data.dao.SaleDao
 import com.mobileshop.erp.data.dao.ShopProfileDao
@@ -52,5 +53,11 @@ object DatabaseModule {
     @Singleton
     fun provideCustomerKhataDao(database: MobileShopDatabase): CustomerKhataDao {
         return database.customerKhataDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideOldPhonePurchaseDao(database: MobileShopDatabase): OldPhonePurchaseDao {
+        return database.oldPhonePurchaseDao()
     }
 }

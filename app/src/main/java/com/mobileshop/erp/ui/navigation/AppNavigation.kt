@@ -17,6 +17,7 @@ import com.mobileshop.erp.ui.screens.product.AddProductScreen
 import com.mobileshop.erp.ui.screens.customer.CustomerDetailScreen
 import com.mobileshop.erp.ui.screens.sale.SellProductScreen
 import com.mobileshop.erp.ui.screens.history.TransactionHistoryScreen
+import com.mobileshop.erp.ui.screens.purchase.PurchaseOldPhoneScreen
 
 @Composable
 fun AppNavigation(
@@ -102,6 +103,9 @@ fun AppNavigation(
                 },
                 onNavigateToTransactionHistory = {
                     navController.navigate(Screen.TransactionHistory.route)
+                },
+                onNavigateToPurchaseOldPhone = {
+                    navController.navigate(Screen.PurchaseOldPhone.route)
                 }
             )
         }
@@ -114,6 +118,12 @@ fun AppNavigation(
 
         composable(Screen.TransactionHistory.route) {
             TransactionHistoryScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.PurchaseOldPhone.route) {
+            PurchaseOldPhoneScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

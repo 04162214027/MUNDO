@@ -37,6 +37,7 @@ fun MainScreen(
     onNavigateToAddProduct: (String) -> Unit,
     onNavigateToSellProduct: (Long) -> Unit,
     onNavigateToTransactionHistory: () -> Unit = {},
+    onNavigateToPurchaseOldPhone: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -226,7 +227,8 @@ fun MainScreen(
                     3 -> OldPhonesPage(
                         soldPhones = uiState.soldPhones,
                         shopName = uiState.shopName,
-                        onNavigateToTransactionHistory = onNavigateToTransactionHistory
+                        onNavigateToTransactionHistory = onNavigateToTransactionHistory,
+                        onNavigateToPurchaseOldPhone = onNavigateToPurchaseOldPhone
                     )
                 }
             }
